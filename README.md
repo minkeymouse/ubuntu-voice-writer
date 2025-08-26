@@ -10,6 +10,9 @@ A simple, browser-based voice dictation tool that types where your cursor is.
 - 🚀 **Fast and reliable** - optimized typing methods
 - 🎯 **Simple interface** - just Start, Stop, and Quit buttons
 - ⚡ **Lightweight** - no complex dependencies, just system tools
+- 🔧 **Configurable** - customizable settings via config.json
+- 📦 **Easy updates** - simple update mechanism
+- 🗑️ **Clean uninstall** - complete removal process
 
 ## Installation
 
@@ -23,7 +26,7 @@ sudo apt install xdotool xclip
 
 ## Usage
 
-### Start VoiceWriter
+### Start Ubuntu Voice Writer
 ```bash
 ./launch.sh
 ```
@@ -37,6 +40,50 @@ Or click the desktop icon!
 4. **Speak clearly** - your speech will be typed automatically
 5. **Click "Stop"** to pause dictation
 6. **Close the browser tab** or click "Quit" to close the application
+
+## Management
+
+### Update Ubuntu Voice Writer
+```bash
+./update.sh
+```
+
+### Uninstall Ubuntu Voice Writer
+```bash
+./uninstall.sh
+```
+
+### Stop Ubuntu Voice Writer
+```bash
+./stop.py
+```
+
+## Configuration
+
+The application can be customized by editing `config.json`:
+
+```json
+{
+  "server": {
+    "port": 8000,
+    "host": "localhost"
+  },
+  "typing": {
+    "timeout": 1.5,
+    "batch_size": 10,
+    "delay": 0.005
+  },
+  "browser": {
+    "preferred": "chrome",
+    "fallback": "firefox"
+  },
+  "speech": {
+    "language": "en-US",
+    "continuous": true,
+    "interim_results": true
+  }
+}
+```
 
 ## How it works
 
@@ -69,6 +116,10 @@ Or click the desktop icon!
 - Check if port 8000 is already in use
 - Try running `./stop.py` to stop any existing servers
 
+**Desktop icon not working?**
+- Run `./install.sh` again to fix desktop integration
+- Check that the icon file exists in the icons directory
+
 ## Files
 
 - `voicewriter.py` - Main application (single file!)
@@ -76,6 +127,10 @@ Or click the desktop icon!
 - `install.sh` - Installation script
 - `launch.sh` - Launcher script
 - `stop.py` - Stop script
+- `update.sh` - Update script
+- `uninstall.sh` - Uninstall script
+- `config.json` - Configuration file
+- `VERSION` - Version information
 - `icons/` - Application icons
 - `README.md` - This documentation
 
@@ -85,5 +140,14 @@ Or click the desktop icon!
 - **Memory Usage**: Minimal, with automatic garbage collection
 - **CPU Usage**: Efficient browser monitoring
 - **Startup Time**: Fast, no complex initialization
+- **Configuration**: Loaded at startup for optimal performance
+
+## Version History
+
+- **v1.0.0**: Initial release with basic functionality
+- Configuration system
+- Update and uninstall scripts
+- Improved desktop integration
+- Better error handling
 
 That's it! Simple, fast, and focused. 🎤

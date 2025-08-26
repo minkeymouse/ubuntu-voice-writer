@@ -1,4 +1,4 @@
-# VoiceWriter - Optimized .gitignore
+# Ubuntu Voice Writer - Optimized .gitignore
 
 # Python
 __pycache__/
@@ -55,6 +55,9 @@ test_*.py
 *.bak
 *.backup
 *~
+
+# Configuration backups (created during updates)
+config.json.backup
 
 # Audio files (if any test files)
 *.wav

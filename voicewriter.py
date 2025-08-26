@@ -14,6 +14,24 @@ import os
 import webbrowser
 import gc
 
+def load_config():
+    """Load configuration from config.json"""
+    try:
+        with open('config.json', 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        # Default configuration
+        return {
+            "server": {"port": 8000, "host": "localhost"},
+            "typing": {"timeout": 1.5, "batch_size": 10, "delay": 0.005},
+            "browser": {"preferred": "chrome", "fallback": "firefox"},
+            "speech": {"language": "en-US", "continuous": True, "interim_results": True},
+            "ui": {"theme": "default", "auto_close": True}
+        }
+
+# Load configuration
+config = load_config()
+
 class VoiceWriterHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         """Handle GET requests"""
@@ -139,34 +157,37 @@ class VoiceWriterHandler(http.server.SimpleHTTPRequestHandler):
         return text
     
     def type_text(self, text):
-        """Type text using optimized methods"""
+        """Type text using optimized methods with configuration"""
         try:
             # Process text to add punctuation
             processed_text = self.process_text(text)
             
-            # Method 1: Direct typing (fastest) - reduced timeout
+            # Get configuration values
+            timeout = config.get('typing', {}).get('timeout', 1.5)
+            batch_size = config.get('typing', {}).get('batch_size', 10)
+            delay = config.get('typing', {}).get('delay', 0.005)
+            
+            # Method 1: Direct typing (fastest)
             result = subprocess.run(['xdotool', 'type', processed_text], 
-                                  capture_output=True, timeout=1.5)
+                                  capture_output=True, timeout=timeout)
             if result.returncode == 0:
                 return True
             
-            # Method 2: Clipboard (more reliable) - optimized
+            # Method 2: Clipboard (more reliable)
             subprocess.run(['xclip', '-selection', 'clipboard'], 
-                         input=processed_text.encode(), capture_output=True, timeout=1)
-            time.sleep(0.05)  # Reduced delay
+                         input=processed_text.encode(), capture_output=True, timeout=timeout/2)
+            time.sleep(delay * 10)  # Slightly longer delay for clipboard
             result = subprocess.run(['xdotool', 'key', 'ctrl+v'], 
-                                  capture_output=True, timeout=1)
+                                  capture_output=True, timeout=timeout/2)
             if result.returncode == 0:
                 return True
             
-            # Method 3: Character by character (slowest but most reliable) - optimized
-            # Batch characters for better performance
-            batch_size = 10
+            # Method 3: Character by character (most reliable)
             for i in range(0, len(processed_text), batch_size):
                 batch = processed_text[i:i+batch_size]
                 subprocess.run(['xdotool', 'type', batch], 
-                             capture_output=True, timeout=0.5)
-                time.sleep(0.005)  # Reduced delay
+                             capture_output=True, timeout=timeout/3)
+                time.sleep(delay)
             return True
             
         except Exception as e:
@@ -333,8 +354,16 @@ def create_html():
 
 def main():
     """Main function"""
-    print("VoiceWriter - Simple Voice Dictation")
-    print("=" * 40)
+    # Get version
+    try:
+        with open('VERSION', 'r') as f:
+            version = f.read().strip()
+    except FileNotFoundError:
+        version = "unknown"
+    
+    print("Ubuntu Voice Writer - Simple Voice Dictation")
+    print(f"Version: {version}")
+    print("=" * 50)
     
     # Check dependencies
     try:
@@ -345,11 +374,16 @@ def main():
         print("   sudo apt install xdotool xclip")
         return
     
-    # Check if port 8000 is already in use
+    # Get server configuration
+    server_config = config.get('server', {})
+    port = server_config.get('port', 8000)
+    host = server_config.get('host', 'localhost')
+    
+    # Check if port is already in use
     try:
-        result = subprocess.run(['lsof', '-ti:8000'], capture_output=True, text=True)
+        result = subprocess.run(['lsof', f'-ti:{port}'], capture_output=True, text=True)
         if result.returncode == 0 and result.stdout.strip():
-            print("🔄 Port 8000 is in use. Stopping existing process...")
+            print(f"🔄 Port {port} is in use. Stopping existing process...")
             subprocess.run(['pkill', '-f', 'voicewriter.py'], capture_output=True)
             time.sleep(2)  # Wait for process to stop
     except:
@@ -361,8 +395,8 @@ def main():
     # Start server
     socketserver.TCPServer.allow_reuse_address = True
     
-    with socketserver.TCPServer(("", 8000), VoiceWriterHandler) as httpd:
-        print(f"🌐 Server started at http://localhost:8000")
+    with socketserver.TCPServer(("", port), VoiceWriterHandler) as httpd:
+        print(f"🌐 Server started at http://{host}:{port}")
         print("📱 Opening browser...")
         print("Press Ctrl+C or click Quit to stop")
         print("🔄 Server will auto-close when browser closes")
