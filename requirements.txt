@@ -1,0 +1,18 @@
+# VoiceWriter - Minimal Dependencies
+# Only system packages needed: xdotool, xclip (installed via apt)
+
+# No Python packages required - using standard library only
+# The application uses:
+# - http.server (built-in)
+# - socketserver (built-in) 
+# - subprocess (built-in)
+# - threading (built-in)
+# - json (built-in)
+# - time (built-in)
+# - os (built-in)
+# - webbrowser (built-in)
+# - urllib.parse (built-in)
+# - gc (built-in)
+
+# For testing only (optional):
+# requests>=2.31.0

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Ubuntu Voice Writer
+Name[en]=Ubuntu Voice Writer
+Comment=Real-time voice dictation tool for Ubuntu
+Comment[en]=Real-time voice dictation tool for Ubuntu
+Exec=voicewriter
+Icon=voicewriter
+Terminal=false
+StartupNotify=true
+Categories=AudioVideo;Audio;Utility;
+Keywords=voice;dictation;speech;text;microphone;
+GenericName=Voice Dictation Tool
