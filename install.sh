@@ -43,6 +43,17 @@ chmod +x uninstall.sh
 
 # Create desktop file with proper paths
 echo "🔧 Creating desktop integration..."
+
+# Get the actual user's home directory (not root's when using sudo)
+if [ "$SUDO_USER" ]; then
+    USER_HOME=$(eval echo ~$SUDO_USER)
+else
+    USER_HOME=$HOME
+fi
+
+# Create applications directory if it doesn't exist
+mkdir -p "$USER_HOME/.local/share/applications"
+
 cat > voicewriter.desktop.tmp << EOF
 [Desktop Entry]
 Version=1.0
@@ -61,9 +72,16 @@ GenericName=Voice Dictation Tool
 EOF
 
 # Install desktop integration
-cp voicewriter.desktop.tmp ~/.local/share/applications/voicewriter.desktop
-cp voicewriter.desktop.tmp ~/Desktop/voicewriter.desktop
-chmod +x ~/Desktop/voicewriter.desktop
+cp voicewriter.desktop.tmp "$USER_HOME/.local/share/applications/voicewriter.desktop"
+cp voicewriter.desktop.tmp "$USER_HOME/Desktop/voicewriter.desktop"
+chmod +x "$USER_HOME/Desktop/voicewriter.desktop"
+
+# Fix ownership if running as root
+if [ "$SUDO_USER" ]; then
+    chown "$SUDO_USER:$SUDO_USER" "$USER_HOME/.local/share/applications/voicewriter.desktop"
+    chown "$SUDO_USER:$SUDO_USER" "$USER_HOME/Desktop/voicewriter.desktop"
+fi
+
 rm voicewriter.desktop.tmp
 
 # Display version

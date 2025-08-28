@@ -9,6 +9,13 @@ echo "================================"
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Get the actual user's home directory (not root's when using sudo)
+if [ "$SUDO_USER" ]; then
+    USER_HOME=$(eval echo ~$SUDO_USER)
+else
+    USER_HOME=$HOME
+fi
+
 # Stop any running instances
 echo "🛑 Stopping any running instances..."
 if pgrep -f "voicewriter.py" > /dev/null; then
@@ -18,8 +25,8 @@ fi
 
 # Remove desktop integration
 echo "🗑️  Removing desktop integration..."
-rm -f ~/.local/share/applications/voicewriter.desktop
-rm -f ~/Desktop/voicewriter.desktop
+rm -f "$USER_HOME/.local/share/applications/voicewriter.desktop"
+rm -f "$USER_HOME/Desktop/voicewriter.desktop"
 
 # Remove any generated files
 echo "🧹 Cleaning up generated files..."
