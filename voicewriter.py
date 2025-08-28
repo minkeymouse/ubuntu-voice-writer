@@ -33,6 +33,12 @@ def load_config():
 config = load_config()
 
 class VoiceWriterHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        self.last_processed_text = ""
+        self.last_processed_time = 0
+        self.min_interval = 0.5  # Minimum time between processing same text
+        super().__init__(*args, **kwargs)
+    
     def do_GET(self):
         """Handle GET requests"""
         if self.path == '/stop':
@@ -65,12 +71,38 @@ class VoiceWriterHandler(http.server.SimpleHTTPRequestHandler):
                 text = data.get('text', '').strip()
                 
                 if text:
+                    # Prevent duplicate processing
+                    current_time = time.time()
+                    if (text == self.last_processed_text and 
+                        current_time - self.last_processed_time < self.min_interval):
+                        print(f"🔄 Skipping duplicate text: {text[:50]}...")
+                        self.send_response(200)
+                        self.send_header('Content-type', 'application/json')
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({'status': 'skipped', 'message': 'Duplicate text'}).encode())
+                        return
+                    
+                    # Prevent very short or suspicious text
+                    if len(text) < 2 or text.count(text[0]) == len(text):
+                        print(f"⚠️  Skipping suspicious text: {text}")
+                        self.send_response(200)
+                        self.send_header('Content-type', 'application/json')
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({'status': 'skipped', 'message': 'Suspicious text'}).encode())
+                        return
+                    
                     start_time = time.time()
                     print(f"🎤 {text}")
                     success = self.type_text(text)
                     typing_time = time.time() - start_time
                     if typing_time > 0.5:  # Log slow typing
                         print(f"⏱️  Typing took {typing_time:.2f}s")
+                    
+                    # Update tracking
+                    self.last_processed_text = text
+                    self.last_processed_time = current_time
                     
                     # Memory optimization - garbage collection for long texts
                     if len(text) > 100:
@@ -159,6 +191,12 @@ class VoiceWriterHandler(http.server.SimpleHTTPRequestHandler):
     def type_text(self, text):
         """Type text using optimized methods with configuration"""
         try:
+            # Rate limiting - prevent too rapid typing
+            current_time = time.time()
+            if hasattr(self, 'last_typing_time') and current_time - self.last_typing_time < 0.1:
+                time.sleep(0.1)  # Minimum delay between typing operations
+            self.last_typing_time = current_time
+            
             # Process text to add punctuation
             processed_text = self.process_text(text)
             
@@ -232,6 +270,9 @@ def create_html():
             constructor() {
                 this.recognition = null;
                 this.isRecording = false;
+                this.shouldBeRecording = false;
+                this.lastSentText = "";
+                this.lastSentTime = 0;
                 this.initSpeechRecognition();
                 this.bindEvents();
             }
@@ -245,8 +286,8 @@ def create_html():
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 this.recognition = new SpeechRecognition();
                 
-                this.recognition.continuous = true;
-                this.recognition.interimResults = true;
+                this.recognition.continuous = false;  // Changed to false to prevent loops
+                this.recognition.interimResults = false;  // Changed to false to prevent partial results
                 this.recognition.lang = 'en-US';
                 
                 this.recognition.onstart = () => {
@@ -279,6 +320,15 @@ def create_html():
                     this.isRecording = false;
                     this.updateUI();
                     this.showStatus('Ready to dictate', 'ready');
+                    
+                    // Restart recognition if it was supposed to be recording
+                    if (this.shouldBeRecording) {
+                        setTimeout(() => {
+                            if (this.shouldBeRecording) {
+                                this.startRecording();
+                            }
+                        }, 100);
+                    }
                 };
             }
 
@@ -290,6 +340,7 @@ def create_html():
 
             startRecording() {
                 if (!this.recognition) return;
+                this.shouldBeRecording = true;
                 try {
                     this.recognition.start();
                 } catch (error) {
@@ -298,12 +349,22 @@ def create_html():
             }
 
             stopRecording() {
+                this.shouldBeRecording = false;
                 if (this.recognition && this.isRecording) {
                     this.recognition.stop();
                 }
             }
 
             async sendToPython(text) {
+                // Prevent rapid-fire requests
+                if (this.lastSentText === text && Date.now() - this.lastSentTime < 500) {
+                    console.log('Skipping duplicate text on client side');
+                    return;
+                }
+                
+                this.lastSentText = text;
+                this.lastSentTime = Date.now();
+                
                 try {
                     const response = await fetch('/type', {
                         method: 'POST',
@@ -312,7 +373,9 @@ def create_html():
                     });
                     
                     const result = await response.json();
-                    if (result.status !== 'success') {
+                    if (result.status === 'skipped') {
+                        console.log('Server skipped text:', result.message);
+                    } else if (result.status !== 'success') {
                         this.showError('Error sending text');
                     }
                 } catch (error) {
